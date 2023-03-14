@@ -1,25 +1,16 @@
 package com.jason.example.test_weather.Model;
 
 public class Clouds {
-    private double lon;
-    private double lat;
+    public double all;
 
     public Clouds() {
     }
 
-    public double getLon() {
-        return lon;
+    public double getAll() {
+        return all;
     }
 
-    public void setLon(double lon) {
-        this.lon = lon;
-    }
-
-    public double getLat() {
-        return lat;
-    }
-
-    public void setLat(double lat) {
-        this.lat = lat;
+    public void setAll(double all) {
+        this.all = all;
     }
 }

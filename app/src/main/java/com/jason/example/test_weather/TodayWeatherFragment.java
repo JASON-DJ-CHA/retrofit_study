@@ -7,13 +7,34 @@ import androidx.fragment.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
+import android.widget.TextView;
+import android.widget.Toast;
 
-/**
- * A simple {@link Fragment} subclass.
- * Use the {@link TodayWeatherFragment#newInstance} factory method to
- * create an instance of this fragment.
- */
+import com.jason.example.test_weather.Common.Common;
+import com.jason.example.test_weather.Model.WeatherResult;
+import com.jason.example.test_weather.Retrofit.IOpenWeatherMap;
+import com.jason.example.test_weather.Retrofit.RetrofitClient;
+
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.functions.Consumer;
+import io.reactivex.schedulers.Schedulers;
+import retrofit2.Retrofit;
+
+
 public class TodayWeatherFragment extends Fragment {
+
+    ImageView img_weather;
+    TextView txt_city_name,txt_humidity, txt_sunrise, txt_sunset, txt_pressure, txt_temperature,txt_description, txt_date_time, txt_wind, txt_geo_coord;
+
+    LinearLayout weather_panel;
+    ProgressBar loading;
+
+    CompositeDisposable compositeDisposable;
+    IOpenWeatherMap mService;
 
     static TodayWeatherFragment instance;
 
@@ -23,50 +44,76 @@ public class TodayWeatherFragment extends Fragment {
         return instance;
     }
 
-    // TODO: Rename parameter arguments, choose names that match
-    // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-    private static final String ARG_PARAM1 = "param1";
-    private static final String ARG_PARAM2 = "param2";
-
-    // TODO: Rename and change types of parameters
-    private String mParam1;
-    private String mParam2;
-
     public TodayWeatherFragment() {
-        // Required empty public constructor
+        compositeDisposable = new CompositeDisposable();
+        Retrofit retrofit = RetrofitClient.getInstance();
+        mService = retrofit.create(IOpenWeatherMap.class);
     }
 
-    /**
-     * Use this factory method to create a new instance of
-     * this fragment using the provided parameters.
-     *
-     * @param param1 Parameter 1.
-     * @param param2 Parameter 2.
-     * @return A new instance of fragment TodayWeatherFragment.
-     */
-    // TODO: Rename and change types and number of parameters
-    public static TodayWeatherFragment newInstance(String param1, String param2) {
-        TodayWeatherFragment fragment = new TodayWeatherFragment();
-        Bundle args = new Bundle();
-        args.putString(ARG_PARAM1, param1);
-        args.putString(ARG_PARAM2, param2);
-        fragment.setArguments(args);
-        return fragment;
-    }
-
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        if (getArguments() != null) {
-            mParam1 = getArguments().getString(ARG_PARAM1);
-            mParam2 = getArguments().getString(ARG_PARAM2);
-        }
-    }
-
-    @Override
+       @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_today_weather, container, false);
+        View itemView = inflater.inflate(R.layout.fragment_today_weather, container, false);
+
+        img_weather = (ImageView)itemView.findViewById(R.id.img_weather);
+        txt_city_name = (TextView)itemView.findViewById(R.id.txt_city_name);
+        txt_humidity = (TextView)itemView.findViewById(R.id.txt_humidity);
+        txt_sunrise = (TextView)itemView.findViewById(R.id.txt_sunrise);
+        txt_sunset = (TextView)itemView.findViewById(R.id.txt_sunset);
+        txt_pressure = (TextView)itemView.findViewById(R.id.txt_pressure);
+        txt_temperature = (TextView)itemView.findViewById(R.id.txt_temperature);
+        txt_description = (TextView)itemView.findViewById(R.id.txt_description);
+        txt_date_time = (TextView)itemView.findViewById(R.id.txt_date_time);
+        txt_wind = (TextView)itemView.findViewById(R.id.txt_wind);
+        txt_geo_coord = (TextView)itemView.findViewById(R.id.txt_geo_coord);
+
+        weather_panel = (LinearLayout)itemView.findViewById(R.id.weather_panal);
+        loading = (ProgressBar) itemView.findViewById(R.id.loading);
+
+        getWeatherInformation();
+
+           return itemView;
+    }
+
+    private void getWeatherInformation() {
+
+        compositeDisposable.add(mService.getWeatherByLatlng(String.valueOf(37),
+                String.valueOf(126),
+                Common.APP_ID,
+                "metric").subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Consumer<WeatherResult>() {
+                    @Override
+                    public void accept(WeatherResult weatherResult) throws Exception {
+
+                        //Load image
+//                        Picasso.get().load(new StringBuilder("http://openweathermap.org/img/w/").
+//                                append(weatherResult.getWeather().get(0).getIcon()).append(".png").toString()).into(img_weather);
+
+                        //Load information
+                        txt_city_name.setText(weatherResult.getName());
+                        txt_description.setText(new StringBuilder("Weather in ").append(weatherResult.getName()).toString());
+                        txt_temperature.setText(new StringBuilder(
+                                String.valueOf(weatherResult.getMain().getTemp())).append("°C").toString());
+                        txt_date_time.setText(Common.convertUnixToDate(weatherResult.getDt()));
+                        txt_pressure.setText(new StringBuilder(String.valueOf(weatherResult.getMain().getPressure())).append(" hpa").toString());
+                        txt_humidity.setText(new StringBuilder(String.valueOf(weatherResult.getMain().getHumidity())).append("%").toString());
+                        txt_sunrise.setText(Common.convertUnixToHour(weatherResult.getSys().getSunrise()));
+                        txt_sunset.setText(Common.convertUnixToHour(weatherResult.getSys().getSunset()));
+                        txt_geo_coord.setText(new StringBuilder("[").append(weatherResult.getCoord().toString()).append("]").toString());
+
+                        //Display panel
+                        weather_panel.setVisibility(View.VISIBLE);
+                        loading.setVisibility(View.GONE);
+                    }
+                }, new Consumer<Throwable>() {
+                    @Override
+                    public void accept(Throwable throwable) throws Exception {
+                        Toast.makeText(getActivity(),""+throwable.getMessage(),Toast.LENGTH_SHORT).show();
+                    }
+                })
+
+        );
     }
 }
